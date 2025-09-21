@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Contact Book</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 20px auto;
+      padding: 10px;
+    }
+    h1 { text-align: center; }
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    input {
+      padding: 8px;
+      font-size: 1rem;
+    }
+    button {
+      padding: 10px;
+      background: #007bff;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    ul { list-style: none; padding: 0; }
+    li {
+      background: #f4f4f4;
+      margin: 5px 0;
+      padding: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-radius: 4px;
+    }
+    .pagination {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 15px;
+    }
+  </style>
+</head>
+<body>
+  <h1>📒 Contact Book</h1>
+  <form id="contactForm">
+    <input type="text" id="name" placeholder="Name" required />
+    <input type="email" id="email" placeholder="Email" required />
+    <input type="text" id="phone" placeholder="Phone (10 digits)" required />
+    <button type="submit">Add Contact</button>
+  </form>
+
+  <ul id="contactList"></ul>
+
+  <div class="pagination">
+    <button id="prevBtn">Prev</button>
+    <span id="pageInfo"></span>
+    <button id="nextBtn">Next</button>
+  </div>
+
+  <script>
+    const API_URL = "http://localhost:5000/contacts";
+    const form = document.getElementById("contactForm");
+    const contactList = document.getElementById("contactList");
+    const prevBtn = document.getElementById("prevBtn");
+    const nextBtn = document.getElementById("nextBtn");
+    const pageInfo = document.getElementById("pageInfo");
+
+    let page = 1;
+    const limit = 5;
+    let totalPages = 1;
+
+    async function fetchContacts() {
+      const res = await fetch(`${API_URL}?page=${page}&limit=${limit}`);
+      const data = await res.json();
+
+      contactList.innerHTML = "";
+      data.data.forEach((c) => {
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <span><b>${c.name}</b> - ${c.email} - ${c.phone}</span>
+          <button onclick="deleteContact('${c.id}')">❌</button>
+        `;
+        contactList.appendChild(li);
+      });
+
+      totalPages = data.totalPages;
+      pageInfo.textContent = `Page ${data.page} of ${totalPages}`;
+      prevBtn.disabled = page === 1;
+      nextBtn.disabled = page === totalPages;
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = document.getElementById("name").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const phone = document.getElementById("phone").value.trim();
+
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, phone }),
+      });
+
+      if (res.ok) {
+        form.reset();
+        fetchContacts();
+      } else {
+        const err = await res.json();
+        alert(err.error || "Error adding contact");
+      }
+    });
+
+    async function deleteContact(id) {
+      await fetch(`${API_URL}/${id}`, { method: "DELETE" });
+      fetchContacts();
+    }
+
+    prevBtn.addEventListener("click", () => {
+      if (page > 1) {
+        page--;
+        fetchContacts();
+      }
+    });
+
+    nextBtn.addEventListener("click", () => {
+      if (page < totalPages) {
+        page++;
+        fetchContacts();
+      }
+    });
+
+    // Initial load
+    fetchContacts();
+  </script>
+</body>
+</html>
